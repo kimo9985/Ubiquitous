@@ -226,4 +226,13 @@
     <string name="gcm_weather_alert">Heads up: %1$s in %2$s!</string>
     // TODO: Get the SenderID from the Developer Console
     <string name="gcm_defaultSenderId" translatable="false"></string>
+
+
+    <string name="analog_config_text">This is the config activity for the Analog and Card Bounds watch faces</string>
+    <string name="digital_config_text">Digital watch face configuration</string>
+    <string name="opengl_config_text">OpenGL watch face configuration</string>
+    <string name="digital_config_background">Background</string>
+    <string name="digital_config_hours">Hours</string>
+    <string name="digital_config_minutes">Minutes</string>
+    <string name="digital_config_seconds">Seconds</string>
 </resources>
