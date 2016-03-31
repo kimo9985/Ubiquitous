@@ -19,7 +19,6 @@
     <string name="digital_config_minutes">Minutes</string>
     <string name="digital_config_seconds">Seconds</string>
 
-    <!-- TODO: this should be shared (needs covering all the samples with Gradle build model) -->
     <string name="color_black">Black</string>
     <string name="color_blue">Blue</string>
     <string name="color_gray">Gray</string>
