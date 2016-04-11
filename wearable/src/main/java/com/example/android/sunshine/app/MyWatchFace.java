@@ -152,8 +152,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
             return Asset.createFromBytes(byteArrayOutputStream.toByteArray());
         }
 
-        public void getWeatherData(int temp, long timestamp) {
-            PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-temp");
+        public void onWeatherDataReceived(int temp, long timestamp) {
+            PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
             putDataMapRequest.getDataMap().putInt("temp", temp);
             putDataMapRequest.getDataMap().putLong("timestamp", timestamp);
