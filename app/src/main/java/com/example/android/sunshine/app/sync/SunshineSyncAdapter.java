@@ -58,6 +58,7 @@ import java.util.concurrent.ExecutionException;
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
     private GoogleApiClient mGoogleApiClient;
+    private static final String TAG = "SunshineLog";
     public static final String ACTION_DATA_UPDATED =
             "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
     // Interval at which to sync with the weather, in seconds.
@@ -648,7 +649,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public void sendWeatherData(Double high, Double low) {
         PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
-        putDataMapRequest.getDataMap().putDouble("high-temp", high);
-        putDataMapRequest.getDataMap().putDouble("low-temp", low);
+        //Use converted temperature//
+        putDataMapRequest.getDataMap().putString(String.valueOf(INDEX_MAX_TEMP),
+                Utility.formatTemperature(getContext(), high));
+        putDataMapRequest.getDataMap().putString(String.valueOf(INDEX_MIN_TEMP),
+                Utility.formatTemperature(getContext(), low));
+
+        Log.d(TAG, "Sent Weather Data: " + high + " " + low);
     }
 }

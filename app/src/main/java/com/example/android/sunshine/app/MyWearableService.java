@@ -15,8 +15,7 @@ public class MyWearableService extends WearableListenerService {
                 DataMap dataMap = DataMapItem.fromDataItem(dataEvent.getDataItem()).getDataMap();
                 String path = dataEvent.getDataItem().getUri().getPath();
                 if (path.equals("/weather-temp")) {
-                    int temp = dataMap.getInt("temp");
-                    long timestamp = dataMap.getLong("timestamp");
+                    double high = dataMap.getInt("temp");
                 }
             }
         }

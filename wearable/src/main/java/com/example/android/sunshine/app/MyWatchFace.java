@@ -54,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Digital watch face with seconds. In ambient mode, the seconds aren't displayed. On devices with
  * low-bit ambient mode, the text is drawn without anti-aliasing in ambient mode.
+ * Reference FitStepsWatchFace
  */
 public class MyWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
@@ -106,12 +107,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
         boolean mAmbient;
         Time mTime;
 
-        GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
-                .addApi(Wearable.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -130,6 +125,40 @@ public class MyWatchFace extends CanvasWatchFaceService {
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+
+        // Google API Client used for Sunshine Weather Data //
+        private GoogleApiClient mGoogleApiClient;
+        private double mHigh;
+        private double mLow;
+
+
+        @Override
+        public void onCreate(SurfaceHolder holder) {
+            super.onCreate(holder);
+
+            GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
+                    .addApi(Wearable.API)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .build();
+
+            setWatchFaceStyle(new WatchFaceStyle.Builder(MyWatchFace.this)
+                    .setCardPeekMode(WatchFaceStyle.PEEK_MODE_VARIABLE)
+                    .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
+                    .setShowSystemUiTime(false)
+                    .setAcceptsTapEvents(true)
+                    .build());
+            Resources resources = MyWatchFace.this.getResources();
+            mYOffset = resources.getDimension(R.dimen.digital_y_offset);
+
+            mBackgroundPaint = new Paint();
+            mBackgroundPaint.setColor(resources.getColor(R.color.background));
+
+            mTextPaint = new Paint();
+            mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+
+            mTime = new Time();
+        }
 
         @Override
         public void onConnected(Bundle bundle) {
@@ -152,13 +181,13 @@ public class MyWatchFace extends CanvasWatchFaceService {
             return Asset.createFromBytes(byteArrayOutputStream.toByteArray());
         }
 
-        public void onWeatherDataReceived(int temp, long timestamp) {
+        public void onWeatherDataReceived(double mHigh, double mLow) {
             PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
-            putDataMapRequest.getDataMap().putInt("temp", temp);
-            putDataMapRequest.getDataMap().putLong("timestamp", timestamp);
-            Asset asset = createAssetFromBitmap(bitmap);
-            putDataMapRequest.getDataMap().putAsset("weatherIcon", asset);
+            putDataMapRequest.getDataMap().putDouble("high", mHigh);
+            putDataMapRequest.getDataMap().putDouble("low", mLow);
+//            Asset asset = createAssetFromBitmap(bitmap);
+//            putDataMapRequest.getDataMap().putAsset("weatherIcon", asset);
 
             PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
             Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest)
@@ -172,28 +201,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                             }
                         }
                     });
-        }
-
-        @Override
-        public void onCreate(SurfaceHolder holder) {
-            super.onCreate(holder);
-
-            setWatchFaceStyle(new WatchFaceStyle.Builder(MyWatchFace.this)
-                    .setCardPeekMode(WatchFaceStyle.PEEK_MODE_VARIABLE)
-                    .setBackgroundVisibility(WatchFaceStyle.BACKGROUND_VISIBILITY_INTERRUPTIVE)
-                    .setShowSystemUiTime(false)
-                    .setAcceptsTapEvents(true)
-                    .build());
-            Resources resources = MyWatchFace.this.getResources();
-            mYOffset = resources.getDimension(R.dimen.digital_y_offset);
-
-            mBackgroundPaint = new Paint();
-            mBackgroundPaint.setColor(resources.getColor(R.color.background));
-
-            mTextPaint = new Paint();
-            mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
-
-            mTime = new Time();
         }
 
         @Override
@@ -215,7 +222,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             super.onVisibilityChanged(visible);
 
             if (visible) {
-                mGoogleApiClient.connect();
+//                mGoogleApiClient.connect();
                 registerReceiver();
 
                 // Update time zone in case it changed while we weren't visible.
@@ -329,6 +336,13 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+
+            // Only render weather data if there is no peek card, so they do not bleed into each //
+            // other in ambient mode. //
+            if (getPeekCardPosition().isEmpty()) {
+                canvas.drawText("High", mXOffset + 130, mYOffset - 50, mTextPaint);
+                canvas.drawText("Low", mXOffset + 130, mYOffset + 50, mTextPaint);
+            }
         }
 
         /**
