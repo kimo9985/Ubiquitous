@@ -191,6 +191,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     // DataItem changed //
                     String path = dataEvent.getDataItem().getUri().getPath();
                     if (path.equals("/weather-data")) {
+                        mHigh = dataItem.toString();
+                        Log.e(LOG_TAG, "onDataChanged: " + mHigh);
 
                     }
                 }
