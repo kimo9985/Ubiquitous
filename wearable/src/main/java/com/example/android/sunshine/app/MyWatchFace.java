@@ -43,7 +43,7 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
-import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
@@ -183,9 +183,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
         @Override  // DataApi.DataListener //
         public void onDataChanged(DataEventBuffer dataEventBuffer) {
 
-            DataMap dataMap;
-
             for (DataEvent dataEvent : dataEventBuffer) {
+
+                DataItem dataItem = dataEvent.getDataItem();
+
                 if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
                     // DataItem changed //
                     String path = dataEvent.getDataItem().getUri().getPath();
