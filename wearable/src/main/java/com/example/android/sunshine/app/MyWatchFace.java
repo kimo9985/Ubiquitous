@@ -40,13 +40,14 @@ import android.view.WindowInsets;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
-import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +56,7 @@ import java.util.concurrent.TimeUnit;
  * Digital watch face with seconds. In ambient mode, the seconds aren't displayed. On devices with
  * low-bit ambient mode, the text is drawn without anti-aliasing in ambient mode.
  * Reference FitStepsWatchFace
+ * Reference http://android-wear-docs.readthedocs.org/en/latest/data.html
  */
 public class MyWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
@@ -96,16 +98,30 @@ public class MyWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine implements
+    private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
             GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
-        private static final String TAG = "SunshineLog";
+
+        public final String LOG_TAG = MyWatchFace.class.getSimpleName();
+
+        // Google API Client used for Sunshine Weather Data //
+        private String mHigh;
+        private String mLow;
         private Bitmap bitmap;
+        private static final String KEY_HIGH = "highTemp";
+        private static final String KEY_LOW = "lowTemp";
+
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
         Paint mTextPaint;
         boolean mAmbient;
         Time mTime;
+
+        GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(Wearable.API)
+                .build();
 
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
             @Override
@@ -126,21 +142,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
          */
         boolean mLowBitAmbient;
 
-        // Google API Client used for Sunshine Weather Data //
-        private GoogleApiClient mGoogleApiClient;
-        private double mHigh;
-        private double mLow;
-
-
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
-
-            GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(MyWatchFace.this)
-                    .addApi(Wearable.API)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .build();
 
             setWatchFaceStyle(new WatchFaceStyle.Builder(MyWatchFace.this)
                     .setCardPeekMode(WatchFaceStyle.PEEK_MODE_VARIABLE)
@@ -160,34 +164,46 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mTime = new Time();
         }
 
-        @Override
+        @Override // GoogleApiClient.ConnectionCallbacks //
         public void onConnected(Bundle bundle) {
-
+            Wearable.DataApi.addListener(mGoogleApiClient, Engine.this);
+            onWeatherDataReceived();
         }
 
-        @Override
+        @Override  // GoogleApiClient.ConnectionCallbacks //
         public void onConnectionSuspended(int i) {
 
         }
 
-        @Override
+        @Override  // GoogleApiClient.OnConnectionFailedListener //
         public void onConnectionFailed(ConnectionResult connectionResult) {
 
         }
 
-        private Asset createAssetFromBitmap(Bitmap bitmap) {
-            final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-            return Asset.createFromBytes(byteArrayOutputStream.toByteArray());
+        @Override  // DataApi.DataListener //
+        public void onDataChanged(DataEventBuffer dataEventBuffer) {
+
+            DataMap dataMap;
+
+            for (DataEvent dataEvent : dataEventBuffer) {
+                if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
+                    // DataItem changed //
+                    String path = dataEvent.getDataItem().getUri().getPath();
+                    if (path.equals("/weather-data")) {
+
+                    }
+                }
+            }
+
         }
 
-        public void onWeatherDataReceived(double mHigh, double mLow) {
+        public void onWeatherDataReceived() {
             PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
-            putDataMapRequest.getDataMap().putDouble("high", mHigh);
-            putDataMapRequest.getDataMap().putDouble("low", mLow);
-//            Asset asset = createAssetFromBitmap(bitmap);
-//            putDataMapRequest.getDataMap().putAsset("weatherIcon", asset);
+            putDataMapRequest.getDataMap().putString("highTemp", KEY_HIGH.toString());
+            putDataMapRequest.getDataMap().putString("lowTemp", mLow);
+
+            Log.e(LOG_TAG, "Temperature Data Received: " + KEY_HIGH + " " + KEY_LOW);
 
             PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
             Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest)
@@ -195,9 +211,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
                         @Override
                         public void onResult(DataApi.DataItemResult dataItemResult) {
                             if (!dataItemResult.getStatus().isSuccess()) {
-                                Log.e(TAG, "Failed to receive temperature!");
+                                Log.e(LOG_TAG, "Failed to receive temperature!");
                             } else {
-                                Log.e(TAG, "Temperature received successfully!");
+                                Log.e(LOG_TAG, "Temperature received successfully!");
                             }
                         }
                     });
@@ -222,7 +238,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             super.onVisibilityChanged(visible);
 
             if (visible) {
-//                mGoogleApiClient.connect();
+                mGoogleApiClient.connect();
                 registerReceiver();
 
                 // Update time zone in case it changed while we weren't visible.

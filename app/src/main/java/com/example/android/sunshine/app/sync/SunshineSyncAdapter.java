@@ -37,7 +37,10 @@ import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
@@ -57,8 +60,13 @@ import java.util.concurrent.ExecutionException;
 
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
+
     private GoogleApiClient mGoogleApiClient;
-    private static final String TAG = "SunshineLog";
+
+    private static final String KEY_HIGH = "highTemp";
+    private static final String KEY_LOW = "lowTemp";
+
+
     public static final String ACTION_DATA_UPDATED =
             "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
     // Interval at which to sync with the weather, in seconds.
@@ -97,7 +105,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         mGoogleApiClient = new GoogleApiClient.Builder(context)
                 .addApi(Wearable.API)
                 .build();
-        mGoogleApiClient.connect();
     }
 
     @Override
@@ -338,7 +345,15 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC, description);
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weatherId);
 
+
+                if (i == 0) {
+                    sendWeatherData(high, low);
+                }
+
+
+
                 cVVector.add(weatherValues);
+
             }
 
             int inserted = 0;
@@ -647,14 +662,27 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     }
 
     public void sendWeatherData(Double high, Double low) {
+
+        mGoogleApiClient.connect();
+
         PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
-        //Use converted temperature//
-        putDataMapRequest.getDataMap().putString(String.valueOf(INDEX_MAX_TEMP),
+        //Use converted temperature in wearable - Delete this//
+        String highString = Utility.formatTemperature(getContext(), high);
+        String lowString = Utility.formatTemperature(getContext(), low);
+
+        putDataMapRequest.getDataMap().putString(KEY_HIGH,
                 Utility.formatTemperature(getContext(), high));
-        putDataMapRequest.getDataMap().putString(String.valueOf(INDEX_MIN_TEMP),
+        putDataMapRequest.getDataMap().putString(KEY_LOW,
                 Utility.formatTemperature(getContext(), low));
 
-        Log.d(TAG, "Sent Weather Data: " + high + " " + low);
+        PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
+
+        Log.d(LOG_TAG, "GoogleApiClient Connected - Weather Data Sent: " + high + " " + low);
+        Log.d(LOG_TAG, "Converted Temperature: " + highString + " " +lowString);
+
+        PendingResult<DataApi.DataItemResult> pendingResult =
+                Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest);
+
     }
 }
