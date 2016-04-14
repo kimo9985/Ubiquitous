@@ -196,7 +196,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     }
                 }
             }
-
         }
 
         public void onWeatherDataReceived() {
