@@ -27,6 +27,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -43,7 +45,7 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
-import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
@@ -107,7 +109,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
         // Google API Client used for Sunshine Weather Data //
         private String mHigh;
         private String mLow;
-        private Bitmap bitmap;
+        private String mWeatherID;
+        private int id = 0;
+        Bitmap weatherArt;
+        private static final String KEY_WEATHERID = "weatherID";
         private static final String KEY_HIGH = "highTemp";
         private static final String KEY_LOW = "lowTemp";
 
@@ -167,7 +172,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
         @Override // GoogleApiClient.ConnectionCallbacks //
         public void onConnected(Bundle bundle) {
             Wearable.DataApi.addListener(mGoogleApiClient, Engine.this);
-            onWeatherDataReceived();
+            requestWeatherData();
         }
 
         @Override  // GoogleApiClient.ConnectionCallbacks //
@@ -185,28 +190,51 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
             for (DataEvent dataEvent : dataEventBuffer) {
 
-                DataItem dataItem = dataEvent.getDataItem();
-
                 if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
                     // DataItem changed //
                     String path = dataEvent.getDataItem().getUri().getPath();
                     if (path.equals("/weather-data")) {
-                        mHigh = dataItem.toString();
-                        Log.e(LOG_TAG, "test");
+
+                        DataMapItem dataMapItem = DataMapItem.fromDataItem(dataEvent.getDataItem());
+
+                        // Check for data change individually //
+                        if (KEY_HIGH != null) {
+                            mHigh = dataMapItem.getDataMap().getString(KEY_HIGH);
+                        }
+
+                        if (KEY_LOW != null) {
+                            mLow = dataMapItem.getDataMap().getString(KEY_LOW);
+                        }
+
+                        if (KEY_WEATHERID != null) {
+                            mWeatherID = dataMapItem.getDataMap().getString(KEY_WEATHERID);
+
+                            id = Integer.parseInt(mWeatherID);
+
+                            // http://stackoverflow.com/questions/8717333/converting-drawable-resource-image-into-bitmap //
+                            // http://stackoverflow.com/questions/20796110/scale-bitmap-using-drawbitmap //
+
+                            Drawable myDrawable = getResources()
+                                    .getDrawable(Utility.getArtResourceForWeatherCondition(id));
+                            weatherArt = ((BitmapDrawable) myDrawable).getBitmap();
+                            weatherArt = Bitmap.createScaledBitmap(weatherArt, 50, 50, true);
+                        }
+
+                        Log.d(LOG_TAG, "Temperature data to string: " + mHigh + " " + mLow + " " + id);
                     }
+                    invalidate();
                 }
             }
         }
 
-        public void onWeatherDataReceived() {
+        public void requestWeatherData() {
             PutDataMapRequest putDataMapRequest = PutDataMapRequest.create("/weather-data");
 
-            putDataMapRequest.getDataMap().putString("highTemp", KEY_HIGH.toString());
-            putDataMapRequest.getDataMap().putString("lowTemp", mLow);
-
-            Log.e(LOG_TAG, "Temperature Data Received: " + KEY_HIGH + " " + KEY_LOW);
+            //putDataMapRequest.getDataMap().putString();
+            putDataMapRequest.setUrgent();
 
             PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
+
             Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest)
                     .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
                         @Override
@@ -350,15 +378,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
             // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             mTime.setToNow();
             String text = mAmbient
-                    ? String.format("%d:%02d", mTime.hour, mTime.minute)
-                    : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
+                    ? String.format("%02d:%02d", mTime.hour, mTime.minute)
+                    : String.format("%02d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
 
             // Only render weather data if there is no peek card, so they do not bleed into each //
             // other in ambient mode. //
             if (getPeekCardPosition().isEmpty()) {
-                canvas.drawText("High", mXOffset + 130, mYOffset - 50, mTextPaint);
-                canvas.drawText("Low", mXOffset + 130, mYOffset + 50, mTextPaint);
+                if (mHigh != null && mLow != null) {
+                    canvas.drawText(mHigh, mXOffset + 175, mYOffset - 50, mTextPaint);
+                    canvas.drawText(mLow, mXOffset + 175, mYOffset + 50, mTextPaint);
+                    canvas.drawBitmap(weatherArt, mXOffset + 175, mYOffset - 40, null);
+                }
             }
         }
 
