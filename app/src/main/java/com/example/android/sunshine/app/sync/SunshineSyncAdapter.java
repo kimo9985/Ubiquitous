@@ -24,7 +24,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.format.Time;
@@ -37,6 +36,7 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.DataApi;
@@ -62,11 +62,9 @@ import java.util.concurrent.ExecutionException;
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
 
-    private GoogleApiClient mGoogleApiClient;
-
-    private static final String KEY_HIGH = "highTemp";
-    private static final String KEY_LOW = "lowTemp";
-    private static final String KEY_WEATHERID = "weatherID";
+    final String KEY_HIGH = "highTemp";
+    final String KEY_LOW = "lowTemp";
+    final String KEY_WEATHERID = "weatherID";
 
     public static final String ACTION_DATA_UPDATED =
             "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
@@ -102,10 +100,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
 
     public SunshineSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
-
-        mGoogleApiClient = new GoogleApiClient.Builder(context)
-                .addApi(Wearable.API)
-                .build();
     }
 
     @Override
@@ -346,15 +340,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC, description);
                 weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weatherId);
 
-
+                // If ContentValues change in Mobile, update Wearable //
                 if (i == 0) {
                     sendWeatherData(high, low, weatherId);
                 }
 
-
-
                 cVVector.add(weatherValues);
-
             }
 
             int inserted = 0;
@@ -662,7 +653,29 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         spe.commit();
     }
 
-    public void sendWeatherData(Double high, Double low, int id) {
+    private void sendWeatherData (double high, double low, int weatherId) {
+
+        GoogleApiClient mGoogleApiClient = new GoogleApiClient.Builder(getContext())
+                .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                    @Override
+                    public void onConnected(Bundle connectionHint) {
+                        Log.d(LOG_TAG, "onConnected: " + connectionHint);
+                        // Now you can use the Data Layer API
+                    }
+                    @Override
+                    public void onConnectionSuspended(int cause) {
+                        Log.d(LOG_TAG, "onConnectionSuspended: " + cause);
+                    }
+                })
+                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                    @Override
+                    public void onConnectionFailed(ConnectionResult result) {
+                        Log.d(LOG_TAG, "onConnectionFailed: " + result);
+                    }
+                })
+                // Request access only to the Wearable API
+                .addApi(Wearable.API)
+                .build();
 
         mGoogleApiClient.connect();
 
@@ -672,29 +685,20 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 Utility.formatTemperature(getContext(), high));
         putDataMapRequest.getDataMap().putString(KEY_LOW,
                 Utility.formatTemperature(getContext(), low));
-        putDataMapRequest.getDataMap().putString(KEY_WEATHERID, String.valueOf(id));
-
-
-
-
-
+        putDataMapRequest.getDataMap().putString(KEY_WEATHERID, String.valueOf(weatherId));
 
         PutDataRequest putDataRequest = putDataMapRequest.asPutDataRequest();
-        Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest).setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-            @Override
-            public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
-                if (dataItemResult.getStatus().isSuccess()) {
-                    Log.d(LOG_TAG, "Weather Data sent successfully!");
-                } else {
-                    Log.d(LOG_TAG, "Weather Data failed to send!");
-                }
-                mGoogleApiClient.disconnect();
-            }
-        });
 
-        Log.d(LOG_TAG, "Temp KEY: " + KEY_HIGH + " " + KEY_LOW);
-        Log.d(LOG_TAG, "GoogleApiClient Connected - Weather Data Sent: " + high + " " + low + " " + id);
-
-
+        Wearable.DataApi.putDataItem(mGoogleApiClient, putDataRequest)
+                .setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                    @Override
+                    public void onResult(DataApi.DataItemResult dataItemResult) {
+                        if (dataItemResult.getStatus().isSuccess()) {
+                            Log.d(LOG_TAG, "Weather Data sent successfully!");
+                        } else {
+                            Log.d(LOG_TAG, "Weather Data failed to send!");
+                        }
+                    }
+                });
     }
 }
