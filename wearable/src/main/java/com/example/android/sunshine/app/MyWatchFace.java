@@ -378,7 +378,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             // Only render weather data if there is no peek card, so they do not bleed into each //
             // other in ambient mode. //
             if (getPeekCardPosition().isEmpty()) {
-                if (mHigh != null && mLow != null) {
+                if (mHigh != null || mLow != null) {
                     canvas.drawText(mHigh, mXOffset + 175, mYOffset - 50, mTextPaint);
                     canvas.drawText(mLow, mXOffset + 175, mYOffset + 50, mTextPaint);
                     canvas.drawBitmap(weatherArt, mXOffset + 175, mYOffset - 40, null);
