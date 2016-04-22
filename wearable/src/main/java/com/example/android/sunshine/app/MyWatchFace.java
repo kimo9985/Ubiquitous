@@ -209,8 +209,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                             if (mWeatherID != null) {
                                 id = Integer.parseInt(mWeatherID);
 
-                                // http://stackoverflow.com/questions/8717333/converting-drawable-resource-image-into-bitmap //
-                                // http://stackoverflow.com/questions/20796110/scale-bitmap-using-drawbitmap //
                                 Drawable myDrawable = getResources()
                                         .getDrawable(Utility.getArtResourceForWeatherCondition(id));
                                 weatherArt = ((BitmapDrawable) myDrawable).getBitmap();
