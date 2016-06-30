@@ -1,3 +1,10 @@
+# Sunshine Weather
+* A watchface weather app with a digital clock, weather icon and High/Low temperature fed from the hand held
+* The mobile, utilizes JSON from openweathermap.org for weather forecasts
+
+![sunshine1](https://cloud.githubusercontent.com/assets/12095070/16482197/92cec9e6-3e63-11e6-80ca-b37e64c349bf.JPG)
+![sunshine2](https://cloud.githubusercontent.com/assets/12095070/16482202/9542788a-3e63-11e6-9e9a-d9de82cbdec7.PNG)
+
 Advanced Android Sample App
 ===================================
 
